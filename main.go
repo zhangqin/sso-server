@@ -1,11 +1,22 @@
 package main
 
 import (
-	_ "github.com/zhangqin/sso-server/routers"
+	"strings"
+
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/context"
+	_ "github.com/zhangqin/sso-server/models"
+	_ "github.com/zhangqin/sso-server/routers"
 )
 
-func main() {
-	beego.Run()
+var loginFilter = func(ctx *context.Context) {
+	_, ok := ctx.Input.Session("ticket").(string)
+	if !ok && !strings.HasPrefix(ctx.Request.RequestURI, "/sso/login") {
+		ctx.Redirect(302, "/sso/login")
+	}
 }
 
+func main() {
+	beego.InsertFilter("/*", beego.BeforeRouter, loginFilter)
+	beego.Run()
+}
