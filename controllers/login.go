@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/astaxie/beego"
+	"github.com/garyburd/redigo/redis"
 	"github.com/sluu99/uuid"
 	"github.com/zhangqin/sso-server/models"
 )
@@ -14,6 +15,16 @@ var (
 
 type LoginController struct {
 	beego.Controller
+}
+
+func getRedis() (redis.Conn, error) {
+	c, err := redis.Dial("tcp", ":6379")
+	if err != nil {
+		// handle error
+		fmt.Println(err)
+	}
+	//defer c.Close()
+	return c, err
 }
 
 func (this *LoginController) Login() {
@@ -29,6 +40,9 @@ func (this *LoginController) Login() {
 		this.SetSession("ticket", ticket)
 		this.SetSession(ticket, user.Id)
 
+		c, _ := getRedis()
+		c.Do("SET", ticket, user.Id)
+
 		if next != "" {
 			this.Redirect(next, 302)
 		} else {
@@ -42,12 +56,20 @@ func (this *LoginController) Login() {
 }
 
 func (this *LoginController) Ticket() {
-	this.Ctx.WriteString("ticket_callback(\"" + this.GetSession("ticket").(string) + "\")")
+	ticket := this.GetSession("ticket")
+	if ticket == nil {
+		ticket = ""
+	}
+	this.Ctx.WriteString("ticket_callback(\"" + ticket.(string) + "\")")
 }
 
 func (this *LoginController) GetUserInfoByTicket() {
-	ticket := this.GetSession("ticket")
-	user_id := this.GetSession(ticket).(int)
+	ticket := this.GetString("ticket")
+	p(ticket)
+	//user_id := this.GetSession(ticket).(int)
+	c, _ := getRedis()
+	user_id, _ := redis.Int(c.Do("GET", ticket))
+	p(user_id)
 	user := models.Users{}
 	user.GetUserInfoById(user_id)
 	info := map[string]interface{}{
@@ -63,8 +85,15 @@ func (this *LoginController) GetURL() {
 	this.Ctx.WriteString(next)
 }
 func (this *LoginController) Logout() {
+	c, _ := getRedis()
+	c.Do("DEL", this.GetSession("ticket"))
 	this.DelSession("ticket")
-	this.Redirect("/sso/login", 302)
+	next := this.GetString("next")
+	if next != "" {
+		this.Redirect(next, 302)
+	} else {
+		this.Redirect("/sso/login", 302)
+	}
 }
 
 func (this *LoginController) Index() {

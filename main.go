@@ -11,7 +11,7 @@ import (
 
 var loginFilter = func(ctx *context.Context) {
 	_, ok := ctx.Input.Session("ticket").(string)
-	if !ok && !strings.HasPrefix(ctx.Request.RequestURI, "/sso/login") {
+	if !ok && !strings.HasPrefix(ctx.Request.RequestURI, "/sso/login") && !strings.HasPrefix(ctx.Request.RequestURI, "/sso/userinfo") && !strings.HasPrefix(ctx.Request.RequestURI, "/sso/ticket") {
 		ctx.Redirect(302, "/sso/login")
 	}
 }

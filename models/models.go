@@ -39,4 +39,5 @@ func init() {
 	orm.SetMaxIdleConns("default", 30) //设置数据库最大空闲连接
 	orm.SetMaxOpenConns("default", 30) //设置数据库最大连接数
 	orm.RegisterModelWithPrefix("sso_", new(Users))
+
 }
